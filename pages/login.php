@@ -1,19 +1,64 @@
-<?php 
+<?php
+session_start();
 require 'functions.php';
 
-if(isset($_POST["daftar"])) {
-    if (daftar($_POST) > 0) {
-        echo "<script>
-                alert ('User baru berhasil ditambahkan');
-                document.location.href = 'login.php';
-              </script>";
-    } else {
-        echo mysqli_error($koneksi);
+// cek cookie
+if( isset($_COOKIE['id_user']) && isset($_COOKIE['username']) ) {
+    $id_user = $_COOKIE['id_user'];
+    $username = $_COOKIE['username'];
+
+    // ambil username berdasarkan id
+    $result = mysqli_query($koneksi, "SELECT username FROM user WHERE id_user = $id_user");
+    $row = mysqli_fetch_assoc($result);
+
+    // cek cookie dan username
+    if ( $username === hash('sha256', $row['username']) ) {
+        $_SESSION['login'] = true;
     }
 }
 
- ?>
+if ( isset ($_SESSION["login"]) ) {
+    header("Location:index.php");
+    exit;
+}
+ 
+if (isset($_POST["login"]) ) {
+    $username = $_POST["username"];
+    $password = $_POST["password"];
 
+    $result = mysqli_query($koneksi, "SELECT * FROM user WHERE username = '$username'");
+
+    // cek username
+    if (mysqli_num_rows ($result) === 1 ) {
+
+    // cek password
+        $row = mysqli_fetch_assoc($result);
+        if(password_verify($password, $row["password"]) ){
+            
+            // set session
+            $_SESSION["login"] = true;
+            $_SESSION["id_user"] = $row["id_user"];
+
+            // cek remember me
+            if (isset($_POST["remember"]) ) {
+                // buat cookie
+                setcookie('id_user', $row['id_user'], time() + 60);
+                setcookie('username', hash('sha256', $row['username']), time() + 60);
+            }
+
+            echo "<script>
+                alert ('Kamu berhasil login');
+                document.location.href = 'index.php';
+                </script>";
+            exit;
+        }
+    }
+            echo "<script>
+                    alert ('Kamu gagal login, periksa username atau password');
+                 </script>";
+}
+
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -59,6 +104,7 @@ if(isset($_POST["daftar"])) {
             }
             .panel-body a {
                 text-decoration: none;
+                font-weight: bold;
             }
         </style>
     </head>
@@ -77,31 +123,21 @@ if(isset($_POST["daftar"])) {
                             <form role="form" action="" method="post">
                                 <fieldset>
                                     <div class="form-group">
-                                        <label for="nama">Nama</label>
-                                        <input class="form-control" placeholder="Nama" name="nama" type="text" id="nama" autocomplete="off" autofocus required>
+                                        <input class="form-control" placeholder="Username" name="username" type="username" autocomplete="off" autofocus required>
                                     </div>
                                     <div class="form-group">
-                                        <label for="username">Username</label>
-                                        <input class="form-control" placeholder="Username" name="username" type="username" id="username" autocomplete="off" required>
+                                        <input class="form-control" placeholder="Password" name="password" type="password" autocomplete="off" required>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="password">Password</label>
-                                        <input class="form-control" placeholder="Password" name="password" type="password" id="password" autocomplete="off" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="password2">Konfirmasi Password</label>
-                                        <input class="form-control" placeholder="Password" name="password2" type="password" id="password2" autocomplete="off" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Level</label>
-                                        <select name="level" class="form-control" required>
-                                            <option value="" >Pilih...</option>
-                                            <option value="mahasiswa" >Mahasiswa</option>
-                                            <option value="dosen" >Dosen</option>
-                                        </select>
+                                    <div class="checkbox">
+                                        <label>
+                                            <input name="remember" type="checkbox" value="Remember Me">Ingat Saya
+                                        </label>
                                     </div>
                                     <!-- Change this to a button or input when using this as a form -->
-                                    <button class="btn btn-lg btn-orange btn-block" name="daftar">Daftar</button>
+                                    <button class="btn btn-lg btn-orange btn-block" name="login">Login</button>
+                                    <div>
+                                        <span>Belum punya akun <a href="daftar.php">DAFTAR DISINI</a></span>
+                                    </div>
                                 </fieldset>
                             </form>
                         </div>
